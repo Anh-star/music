@@ -1,0 +1,49 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Clone') {
+            steps {
+                echo 'Cloning source code'
+                git branch: 'main', url: 'https://github.com/Anh-star/music.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Building Spring Boot project'
+                sh './mvnw clean package -DskipTests'
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                echo 'Running tests...'
+                sh './mvnw test'
+            }
+        }
+
+        stage('Publish') {
+            steps {
+                echo 'Publishing artifact'
+                archiveArtifacts artifacts: 'target/*.jar', followSymlinks: false
+            }
+        }
+
+        stage('Deploy to Server') {
+            steps {
+                echo 'Deploying Spring Boot app'
+                sh '''
+                # Kill old process if running
+                PID=$(ps -ef | grep 'spring-boot-app.jar' | grep -v grep | awk '{print $2}')
+                if [ ! -z "$PID" ]; then
+                    kill -9 $PID
+                fi
+
+                # Start new version
+                nohup java -jar target/*.jar > app.log 2>&1 &
+                '''
+            }
+        }
+    }
+}
